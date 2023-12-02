@@ -4,19 +4,35 @@ import pygetwindow as gw
 import numpy as np
 import os
 
-UNREVEALED_SQUARE_COLORS = [(150, 206, 80, 255), (158, 213, 86, 255)]
-REVEALED_SQUARE_COLORS = [(226, 188, 152, 255), (211, 177, 145, 255)]
-ONE_COLOR = (15, 101, 198, 255)
-TWO_COLOR = (44, 132, 60, 255)
-THREE_COLOR = (208, 44, 46, 255)
-FOUR_COLOR = (114, 9, 147, 255)
-FIVE_COLOR = (255, 135, 40, 255)
+if os.name == 'nt':
+    UNREVEALED_SQUARE_COLORS = [(162, 209, 73), (170, 215, 81)]
+    REVEALED_SQUARE_COLORS = [(215, 184, 153), (229, 194, 159)]
+    ONE_COLOR = (25, 118, 210)
+    TWO_COLOR = (56, 142, 60)
+    THREE_COLOR = (211, 47, 47)
+    FOUR_COLOR = (123, 31, 162)
+    FIVE_COLOR = (255, 135, 40)
+    GAME_OVER_COLOR_1 = (77, 193, 249)
+    GAME_OVER_COLOR_2 = (74, 192, 253)
+else:
+    UNREVEALED_SQUARE_COLORS = [(150, 206, 80), (158, 213, 86)]
+    REVEALED_SQUARE_COLORS = [(226, 188, 152), (211, 177, 145)]
+    ONE_COLOR = (15, 101, 198)
+    TWO_COLOR = (44, 132, 60)
+    THREE_COLOR = (208, 44, 46)
+    FOUR_COLOR = (114, 9, 147)
+    FIVE_COLOR = (255, 135, 40)
+    GAME_OVER_COLOR = (77, 193, 249)
+
 SQUARE_CENTERS = None
 GAME_REGION = None
 
 # Function to check if the correct window is in the foreground
 def is_correct_window_foreground(window_title="Google Chrome"):
+    if os.name == 'nt':
+        return window_title in gw.getActiveWindow().title
     return window_title in gw.getActiveWindow().title()
+    
 
 def take_screenshot(return_array=False):
     # Wait until the correct window is active
@@ -31,8 +47,8 @@ def take_screenshot(return_array=False):
     return screenshot
 
 # Function to check if the pixel matches the target colors
-def is_target_color(SCREENSHOT, x, y):
-    pixel_color = np.array(SCREENSHOT[x, y])
+def is_target_color(screenshot, x, y):
+    pixel_color = np.array(screenshot[x, y])[:3]
     return min(abs(pixel_color - np.array(UNREVEALED_SQUARE_COLORS[0])).sum(),
                 abs(pixel_color - np.array(UNREVEALED_SQUARE_COLORS[1])).sum()) < 15
 
@@ -70,7 +86,7 @@ def get_square_coordinates(screenshot):
     # Start from the top-left corner of the game region
     start_x, start_y = GAME_REGION[0]+2, GAME_REGION[1]+2
     starting_color = screenshot[start_x, start_y]
-    assert starting_color in UNREVEALED_SQUARE_COLORS
+    assert starting_color in UNREVEALED_SQUARE_COLORS, f"Starting color: {starting_color}"
     starting_color_index = UNREVEALED_SQUARE_COLORS.index(starting_color)
     width, height = GAME_REGION[2], GAME_REGION[3]
 
@@ -136,7 +152,7 @@ def init_game():
     numbers = np.zeros((num_squares_x, num_squares_y), dtype=int)
     return revealed_squares, numbers, mines
 
-def get_square_region(grid_x, grid_y, num_squares_x, num_squares_y, margin=5):
+def get_square_region(grid_x, grid_y, num_squares_x, num_squares_y, margin=0):
     # Get the coordinates of the square
     center_x, center_y = SQUARE_CENTERS[grid_x, grid_y]
     square_width = GAME_REGION[2] // num_squares_x
@@ -169,24 +185,34 @@ def get_square_type(square_image):
         revealed = True
     return number, revealed
     
-    
+def check_game_over(square_image):
+    return contains_color(square_image, np.array(GAME_OVER_COLOR_1)) or contains_color(square_image, np.array(GAME_OVER_COLOR_2))
 
 def update_game_state(revealed_squares, numbers):
     assert GAME_REGION is not None, "You must call init_game() before calling get_game_state()"
     assert SQUARE_CENTERS is not None, "You must call init_game() before calling get_game_state()"
     num_squares_x, num_squares_y = revealed_squares.shape 
 
-    os.makedirs('region_images', exist_ok=True)
+    
+    pyautogui.sleep(0.2) # to avoid numbers being obscured by the animation
     screenshot = take_screenshot(return_array=True)
+
+    # check for game over
+    x = num_squares_x // 2
+    y = num_squares_y // 3
+    left, top, square_width, square_height = get_square_region(x, y, num_squares_x, num_squares_y)
+    square_image = screenshot[left:left + square_width, top:top + square_height, :3]
+    if check_game_over(square_image):
+        return None, None, True
     for x in range(num_squares_x):
         for y in range(num_squares_y):
             if revealed_squares[x, y]:
                 continue
             left, top, square_width, square_height = get_square_region(x, y, num_squares_x, num_squares_y)
-            square_image = screenshot[left:left + square_width, top:top + square_height]
+            square_image = screenshot[left:left + square_width, top:top + square_height, :3]
             number, revealed = get_square_type(square_image)
             revealed_squares[x, y] = revealed
             numbers[x, y] = number
-    return revealed_squares, numbers
+    return revealed_squares, numbers, False
 
 

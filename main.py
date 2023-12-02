@@ -14,7 +14,10 @@ def main():
         click_square(grid_x, grid_y)
 
     while True: 
-        revealed_squares, numbers = update_game_state(revealed_squares, numbers)
+        revealed_squares, numbers, game_over = update_game_state(revealed_squares, numbers)
+        if game_over:
+            print("We lost")
+            exit()
         mines, coords_to_click, potential_guess_coords = get_coords_to_click(numbers, revealed_squares, mines)
         # print('Mines:\n', mines.T)
         # print('Revealed squares:\n', revealed_squares.T)
