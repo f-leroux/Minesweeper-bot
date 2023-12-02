@@ -12,6 +12,7 @@ if os.name == 'nt':
     THREE_COLOR = (211, 47, 47)
     FOUR_COLOR = (123, 31, 162)
     FIVE_COLOR = (255, 135, 40)
+    SIX_COLOR = (0, 139, 155)
     GAME_OVER_COLOR_1 = (77, 193, 249)
     GAME_OVER_COLOR_2 = (74, 192, 253)
 else:
@@ -22,7 +23,9 @@ else:
     THREE_COLOR = (208, 44, 46)
     FOUR_COLOR = (114, 9, 147)
     FIVE_COLOR = (255, 135, 40)
-    GAME_OVER_COLOR = (77, 193, 249)
+    SIX_COLOR = (0, 139, 155)
+    GAME_OVER_COLOR_1 = (60, 182, 244)
+    GAME_OVER_COLOR_2 = (77, 193, 249)
 
 SQUARE_CENTERS = None
 GAME_REGION = None
@@ -85,7 +88,7 @@ def find_game_region(screenshot):
 def get_square_coordinates(screenshot):
     # Start from the top-left corner of the game region
     start_x, start_y = GAME_REGION[0]+2, GAME_REGION[1]+2
-    starting_color = screenshot[start_x, start_y]
+    starting_color = screenshot[start_x, start_y][:3]
     assert starting_color in UNREVEALED_SQUARE_COLORS, f"Starting color: {starting_color}"
     starting_color_index = UNREVEALED_SQUARE_COLORS.index(starting_color)
     width, height = GAME_REGION[2], GAME_REGION[3]
@@ -95,7 +98,7 @@ def get_square_coordinates(screenshot):
         current_color_index = starting_color_index
         y_boundaries = [start_y]
         for y in range(start_y + 1, start_y + height):
-            if screenshot[x, y] == UNREVEALED_SQUARE_COLORS[(current_color_index + 1) % 2]:
+            if screenshot[x, y][:3] == UNREVEALED_SQUARE_COLORS[(current_color_index + 1) % 2]:
                 current_color_index = (current_color_index + 1) % 2
                 y_boundaries.append(y)
         y_boundaries.append(start_y + height)  # Add the bottom boundary
@@ -106,7 +109,7 @@ def get_square_coordinates(screenshot):
         current_color_index = starting_color_index
         x_boundaries = [start_x]
         for x in range(start_x + 1, start_x + width):
-            if screenshot[x, y] == UNREVEALED_SQUARE_COLORS[(current_color_index + 1) % 2]:
+            if screenshot[x, y][:3] == UNREVEALED_SQUARE_COLORS[(current_color_index + 1) % 2]:
                 current_color_index = (current_color_index + 1) % 2
                 x_boundaries.append(x)
         x_boundaries.append(start_x + width)  # Add the right boundary
@@ -180,6 +183,9 @@ def get_square_type(square_image):
         revealed = True
     elif contains_color(square_image, np.array(FIVE_COLOR)):
         number = 5
+        revealed = True
+    elif contains_color(square_image, np.array(SIX_COLOR)):
+        number = 6
         revealed = True
     elif contains_color(square_image, np.array(REVEALED_SQUARE_COLORS[0])) or contains_color(square_image, np.array(REVEALED_SQUARE_COLORS[1])): 
         revealed = True
